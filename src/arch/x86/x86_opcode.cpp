@@ -29025,15 +29025,23 @@ bool X86Architecture::Table_2_c7(BinaryStream const& rBinStrm, TOffset Offset, I
               Expr::MakeConst(1, 0x0))
           );
           AllExpr.push_back(pExpr0);
+
+          Expression::SPType operand0 = rInsn.GetOperand(0);
+          Expression::SPType operand1 = rInsn.GetOperand(1);
+
+          // WARNING: This should be handled
+          if (operand1 == nullptr) {
+              Log::Write("operand 1 is null");
+              return false;
+          }
+
           auto pExpr1 = /* Semantic: if zf.id == int1(1): op0.val = op1.val */
           Expr::MakeIfElseCond(
             ConditionExpression::CondEq,
             Expr::MakeId(X86_FlZf, &m_CpuInfo),
             Expr::MakeConst(1, 0x1),
-            Expr::MakeAssign(
-              rInsn.GetOperand(0),
-              rInsn.GetOperand(1))
-          , nullptr);
+            Expr::MakeAssign(operand0, operand1),
+            nullptr);
           AllExpr.push_back(pExpr1);
           rInsn.SetSemantic(AllExpr);
         }
