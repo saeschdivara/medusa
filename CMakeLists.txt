@@ -30,6 +30,12 @@ if (MSVC)
   message(STATUS "MS Visual Studio generator detected, define _WIN32_WINNT=${WIN_VER}")
 endif()
 
+if("${CMAKE_SYSTEM_NAME}" MATCHES "Darwin")
+  #if(${CMAKE_SYSTEM_VERSION} MATCHES "todo-some-number-here")
+       add_definitions("-DGTEST_USE_OWN_TR1_TUPLE=1")
+  #endif()
+endif()
+
 # TODO: change version.hpp destination (CMAKE_BINARY_DIR)
 configure_file(
   ${CMAKE_SOURCE_DIR}/inc/medusa/version.hpp.in
