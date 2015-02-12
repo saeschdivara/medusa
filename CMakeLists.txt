@@ -57,6 +57,7 @@ set(CMAKE_RUNTIME_OUTPUT_DIRECTORY          ${CMAKE_BINARY_DIR}/bin)
 include_directories(
   ${CMAKE_SOURCE_DIR}/inc
   ${Boost_INCLUDE_DIRS}
+  ${QT5_CMAKE_PATH}
   )
 
 link_directories(
@@ -68,8 +69,11 @@ if("${CMAKE_CXX_COMPILER}" MATCHES "clang(\\+\\+)?$" OR "${CMAKE_CXX_COMPILER_ID
   set(CMAKE_COMPILER_IS_CLANGXX 1)
 endif()
 
-if (CMAKE_COMPILER_IS_GNUCXX OR CMAKE_COMPILER_IS_CLANGXX)
-  add_definitions("-std=c++11" "-fabi-version=6")
+# Enable C++11
+if("${CMAKE_CXX_COMPILER_ID}" STREQUAL "Clang" OR EMSCRIPTEN)
+        list(APPEND CMAKE_CXX_FLAGS "-std=c++11 -stdlib=libc++")
+elseif("${CMAKE_CXX_COMPILER_ID}" STREQUAL "GNU")
+        list(APPEND CMAKE_CXX_FLAGS "-std=gnu++0x -fno-operator-names")
 endif()
 
 # src: ogdf cmake
