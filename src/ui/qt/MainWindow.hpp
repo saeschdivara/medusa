@@ -58,6 +58,7 @@ public slots:
   void        on_actionGoto_triggered();
   void        on_actionDisassembly_triggered();
   void        on_actionSettings_triggered();
+  void        on_actionSimpleAction_triggered();
   void        on_tabWidget_tabCloseRequested(int index);
   void        onLogMessageAppended(QString const & msg);
 

@@ -10,6 +10,7 @@
 #include <QKeySequence>
 #include <QScrollBar>
 #include <QMessageBox>
+#include <QString>
 
 #include "MainWindow.hpp"
 #include "ConfigureDialog.hpp"
@@ -19,6 +20,7 @@
 #include <medusa/module.hpp>
 #include <medusa/log.hpp>
 #include <medusa/user_configuration.hpp>
+#include <medusa/disassembly_view.hpp>
 
 MainWindow::MainWindow(QString const& rFilePath, QString const& rDbPath)
   : QMainWindow(), Ui::MainWindow()
@@ -440,6 +442,35 @@ void MainWindow::on_actionDisassembly_triggered()
 void MainWindow::on_actionSettings_triggered()
 {
   this->_settingsDialog.exec();
+}
+
+void MainWindow::on_actionSimpleAction_triggered()
+{
+    qDebug() << QString::fromStdString(
+                        _medusa.GetDocument().GetOperatingSystemName()
+                    );
+
+    medusa::Address FirstAddr = _medusa.GetDocument().GetFirstAddress();
+    medusa::Address LastAddr  = _medusa.GetDocument().GetLastAddress();
+
+    medusa::PrintData Print;
+    medusa::FormatDisassembly FmtDisasm(_medusa, Print);
+
+    medusa::u32 m_FormatFlags = medusa::FormatDisassembly::ShowAddress |
+                        medusa::FormatDisassembly::AddSpaceBeforeXref |
+                        medusa::FormatDisassembly::Indent;
+
+    FmtDisasm(std::make_pair(FirstAddr, LastAddr), m_FormatFlags);
+    // TODO trim it!
+    qDebug() << "Trying to get the lines";
+    std::vector<std::string>& rLines = Print.GetTextLines();
+    qDebug() << "We have the lines: " << rLines.size();
+    //rLines.erase();
+    //rLines.erase();
+
+    for (auto const& rLine : rLines) {
+        qDebug() << QString::fromStdString(rLine);
+    }
 }
 
 void MainWindow::on_tabWidget_tabCloseRequested(int index)

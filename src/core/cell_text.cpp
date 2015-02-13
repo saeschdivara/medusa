@@ -146,7 +146,7 @@ std::string PrintData::GetTexts(void) const
   return Texts;
 }
 
-std::vector<std::string> PrintData::GetTextLines(void) const
+std::vector<std::string>& PrintData::GetTextLines(void) const
 {
   std::vector<std::string> Lines;
   Lines.reserve(m_Lines.size());

@@ -11,6 +11,7 @@
 
 #include <string>
 #include <vector>
+#include <deque>
 #include <memory>
 #include <mutex>
 
@@ -134,7 +135,7 @@ public:
 protected:
   bool _GetPreviousCellOffset(TOffset Offset, TOffset& rPreviousOffset) const;
 
-  typedef std::vector<CellData::SPType> CellDataVectorType;
+  typedef std::deque<CellData::SPType> CellDataVectorType;
 
   TOffset            m_FileOffset;
   u32                m_FileSize;
