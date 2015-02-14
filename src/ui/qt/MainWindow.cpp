@@ -12,6 +12,9 @@
 #include <QMessageBox>
 #include <QString>
 
+#include <QtCore/QFile>
+#include <QtCore/QTextStream>
+
 #include "MainWindow.hpp"
 #include "ConfigureDialog.hpp"
 #include "Proxy.hpp"
@@ -446,10 +449,6 @@ void MainWindow::on_actionSettings_triggered()
 
 void MainWindow::on_actionSimpleAction_triggered()
 {
-    qDebug() << QString::fromStdString(
-                        _medusa.GetDocument().GetOperatingSystemName()
-                    );
-
     medusa::Address FirstAddr = _medusa.GetDocument().GetFirstAddress();
     medusa::Address LastAddr  = _medusa.GetDocument().GetLastAddress();
 
@@ -460,17 +459,35 @@ void MainWindow::on_actionSimpleAction_triggered()
                         medusa::FormatDisassembly::AddSpaceBeforeXref |
                         medusa::FormatDisassembly::Indent;
 
-    FmtDisasm(std::make_pair(FirstAddr, LastAddr), m_FormatFlags);
-    // TODO trim it!
-    qDebug() << "Trying to get the lines";
-    std::vector<std::string>& rLines = Print.GetTextLines();
-    qDebug() << "We have the lines: " << rLines.size();
-    //rLines.erase();
-    //rLines.erase();
+    QFile assemblyFile("test.asm");
+    if (!assemblyFile.open(QIODevice::ReadWrite | QIODevice::Text))
+        return;
 
-    for (auto const& rLine : rLines) {
-        qDebug() << QString::fromStdString(rLine);
+    qDebug() << "Created file at: " << assemblyFile.fileName();
+
+    QTextStream out(&assemblyFile);
+
+    int iLineNumber = 0;
+
+    while (FirstAddr != LastAddr) {
+
+        while (!_medusa.GetDocument().GetNextAddress(FirstAddr, FirstAddr))
+            qDebug() << "Nothing found at " << FirstAddr.GetOffset();
+
+        FmtDisasm(FirstAddr, m_FormatFlags, 1);
+
+        std::string Line = Print.GetTexts();
+        out << QString::fromStdString(Line);
+
+        iLineNumber++;
+
+        if (iLineNumber == 100) {
+            iLineNumber = 0;
+            assemblyFile.flush();
+        }
     }
+
+    assemblyFile.close();
 }
 
 void MainWindow::on_tabWidget_tabCloseRequested(int index)
