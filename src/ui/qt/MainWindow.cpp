@@ -14,6 +14,9 @@
 
 #include <QtCore/QFile>
 #include <QtCore/QTextStream>
+#include <QtCore/QThreadPool>
+//#include <QtGui/QInputDialog>
+#include <QInputDialog>
 
 #include "MainWindow.hpp"
 #include "ConfigureDialog.hpp"
@@ -24,6 +27,10 @@
 #include <medusa/log.hpp>
 #include <medusa/user_configuration.hpp>
 #include <medusa/disassembly_view.hpp>
+
+#include <medusa/types.hpp>
+
+#include <list>
 
 MainWindow::MainWindow(QString const& rFilePath, QString const& rDbPath)
   : QMainWindow(), Ui::MainWindow()
@@ -447,47 +454,99 @@ void MainWindow::on_actionSettings_triggered()
   this->_settingsDialog.exec();
 }
 
-void MainWindow::on_actionSimpleAction_triggered()
+class MemoryDisAssemblerTask : public QRunnable
 {
-    medusa::Address FirstAddr = _medusa.GetDocument().GetFirstAddress();
-    medusa::Address LastAddr  = _medusa.GetDocument().GetLastAddress();
+public:
 
-    medusa::PrintData Print;
-    medusa::FormatDisassembly FmtDisasm(_medusa, Print);
-
-    medusa::u32 m_FormatFlags = medusa::FormatDisassembly::ShowAddress |
-                        medusa::FormatDisassembly::AddSpaceBeforeXref |
-                        medusa::FormatDisassembly::Indent;
-
-    QFile assemblyFile("test.asm");
-    if (!assemblyFile.open(QIODevice::ReadWrite | QIODevice::Text))
-        return;
-
-    qDebug() << "Created file at: " << assemblyFile.fileName();
-
-    QTextStream out(&assemblyFile);
-
-    int iLineNumber = 0;
-
-    while (FirstAddr != LastAddr) {
-
-        while (!_medusa.GetDocument().GetNextAddress(FirstAddr, FirstAddr))
-            qDebug() << "Nothing found at " << FirstAddr.GetOffset();
-
-        FmtDisasm(FirstAddr, m_FormatFlags, 1);
-
-        std::string Line = Print.GetTexts();
-        out << QString::fromStdString(Line);
-
-        iLineNumber++;
-
-        if (iLineNumber == 100) {
-            iLineNumber = 0;
-            assemblyFile.flush();
-        }
+    MemoryDisAssemblerTask(medusa::Medusa * medusa, medusa::Address const rAddress)
+        : m_pMedusa(medusa), m_Address(rAddress) {
     }
 
-    assemblyFile.close();
+    void run()
+    {
+        medusa::MemoryArea const* rMemArea = m_pMedusa->GetDocument().GetMemoryArea(m_Address);
+
+        QString assemblyName = QString::fromStdString( rMemArea->GetName() );
+
+        if (assemblyName.contains('.')) {
+            assemblyName = QString("sec_") + assemblyName.replace('.', QString(""));
+        }
+
+        assemblyName += QString(".asm");
+
+        QFile assemblyFile(assemblyName);
+
+        assert(assemblyFile.open(QIODevice::ReadWrite | QIODevice::Text));
+
+        qDebug() << "Created file at: " << assemblyFile.fileName();
+
+        medusa::Address FirstAddr = m_Address;
+
+        int iLineNumber = 0;
+
+        std:string MemoryName = rMemArea->GetName();
+
+        medusa::PrintData Print;
+        medusa::FormatDisassembly FmtDisasm(*m_pMedusa, Print);
+
+        medusa::u32 m_FormatFlags = medusa::FormatDisassembly::ShowAddress |
+                            medusa::FormatDisassembly::AddSpaceBeforeXref |
+                            medusa::FormatDisassembly::Indent;
+
+        QString qMemoryName = QString::fromStdString(MemoryName);
+
+        forever {
+            qDebug() << qMemoryName << FirstAddr.GetOffset();
+
+            FmtDisasm(FirstAddr, m_FormatFlags, 1);
+
+            std::string Line = Print.GetTexts();
+            assemblyFile.write(Line.c_str(), Line.length());
+
+            iLineNumber++;
+
+            if (iLineNumber == 1000) {
+                iLineNumber = 0;
+                assemblyFile.flush();
+            }
+
+            if (!rMemArea->GetNextAddress(FirstAddr, FirstAddr)) {
+                qDebug() << "Nothing found for " << qMemoryName;
+                break;
+            }
+        }
+
+        assemblyFile.flush();
+        assemblyFile.close();
+    }
+
+private:
+    medusa::Address m_Address;
+    medusa::Medusa * m_pMedusa;
+};
+
+void MainWindow::on_actionSimpleAction_triggered()
+{
+    bool ok;
+    QString text = QInputDialog::getText(this, tr("QInputDialog::getText()"),
+                                         tr("Section:"), QLineEdit::Normal,
+                                         QString(""), &ok);
+
+    _medusa.GetDocument().ForEachMemoryArea([&](medusa::MemoryArea const& rMemArea)
+    {
+        //if (ok && !text.isEmpty()) {
+
+          //  if (QString::fromStdString(rMemArea.GetName()) == text) {
+
+                MemoryDisAssemblerTask *hello = new MemoryDisAssemblerTask(
+                            &_medusa,
+                            rMemArea.GetBaseAddress()
+                            );
+
+                QThreadPool::globalInstance()->start(hello);
+            //}
+        //}
+    });
 }
 
 void MainWindow::on_tabWidget_tabCloseRequested(int index)
